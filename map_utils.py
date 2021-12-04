@@ -3,11 +3,33 @@ from math import sin, cos
 import cv2
 import numpy as np
 
+"""
+Контуры дорожного полотна зависят от параметров сетки (как плотно или широко будут отрисовываться автомобили).
+И параметры сетки И контуры дорожного полотна зависят от размеров карты.
+Все эти константы-параметры были подбраны вручную.
+"""
+# размеры карты
+MAP_WIDTH = 1024
+MAP_HEIGHT = 256
+
+# параметры сетки
+GRID_WIDTH = 10
+X_AR = 400
+D_AR = - GRID_WIDTH * 0.007
+
+# контур дорожного полотна
+ROAD_POINTS = [
+    (0, 145), (280, 145), (280, 100), (490, 100), (520, 10), (900, 10), (1005, 100),  # сверху
+    (1005, 256), (900, 256),  # справа
+    (900, 245), (0, 245), (0, 145)  # снизу
+]
+
+# ширина машины
 CAR_WIDTH = 19
 
 
 # матрица проективного преобразования (позволяет сменить ракурс)
-def homography_matrix(map_width: int, map_height: int):
+def homography_matrix(map_width: int = MAP_WIDTH, map_height: int = MAP_HEIGHT):
 
     source_points = np.asarray([
       [  200, 235], # top left
@@ -32,10 +54,10 @@ def homography_matrix(map_width: int, map_height: int):
 
 
 def make_grid(
-        grid_width: int,
-        map_width: int,
-        x_ar: int,
-        d_ar: float,
+        grid_width: int = GRID_WIDTH,
+        map_width: int = MAP_WIDTH,
+        x_ar: int = X_AR,
+        d_ar: float = D_AR,
 ):
     """
     Cетка для спроецированного изображения (для каждого bbox будет определяться - к какой линии он ближе)
@@ -71,7 +93,7 @@ def make_grid(
     return grids_source_lst
 
 
-def make_map(map_width: int, map_height: int, n_lines: int):
+def make_map(n_lines: int, map_width: int = MAP_WIDTH, map_height: int = MAP_HEIGHT, road_points: list = ROAD_POINTS):
     """
     Создаю карту-схема.
     Отрисовываю дорожное полотоно.
@@ -84,15 +106,12 @@ def make_map(map_width: int, map_height: int, n_lines: int):
     :return:
     """
     # шаблон карты
-    pk_map = np.zeros((map_height, map_width, 3))
+    pk_map = np.full((map_height, map_width, 3), 255, dtype='uint8')
 
-    # контур дорожного полотна
-    road = np.array([
-        (0, 145), (280, 145), (280, 100), (490, 100), (520, 10), (900, 10), (1010, 100),  # сверху
-        (1010, 256), (900, 256),  # справа
-        (900, 245), (0, 245), (0, 145)  # снизу
-    ])
-    pk_map = cv2.fillPoly(pk_map, pts=[road], color=(100, 100, 100))
+    # отрисовка дорожного полотнаи
+    for i in range(len(road_points) - 1):
+        cv2.line(pk_map, tuple(road_points[i]), tuple(road_points[i + 1]), color=(175, 175, 175), thickness=4)
+    pk_map = cv2.fillPoly(pk_map, pts=[np.array(road_points)], color=(200, 200, 200))
 
     # определяю координаты х равномерной сетки
     grid_width = map_width / (n_lines + 1)  # линии делят карту на n_lines + 1 область
@@ -132,7 +151,7 @@ def draw_car(
     :param car_width: ширина машины
     :return: карта-схема
     """
-    color = (0, 0, 255)
+    color = (30, 144, 255)
     car_length = 1.8 * car_width
 
     idx = find_nearest(grids_s_lst, x)
@@ -174,7 +193,7 @@ def draw_car(
     return pk_map
 
 
-def make_contour(map_width: int, map_height: int, points: list):
+def make_contour(points: list, map_width: int = MAP_WIDTH, map_height: int = MAP_HEIGHT):
     """
     Функция для создания объекта Contour.
     По сути - это просто граница определенной праковочной области.
@@ -210,7 +229,7 @@ def draw_parking(
     """
     Отрисовка автомобилей на карте, которые находятся в пределах области "contours"
     :param bbox_lst: набор bbox
-    :param parking_map: карт-схема
+    :param parking_map: карта-схема
     :param contours: контур
     :param grids_source_lst: сетка спроецированного изображения
     :param grids_target_lst: сетка карты-схемы

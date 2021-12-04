@@ -3,15 +3,6 @@ import cv2
 
 from map_utils import homography_matrix, make_grid, make_map, make_contour, draw_parking
 
-# размеры карты
-MAP_WIDTH = 1024
-MAP_HEIGHT = 256
-
-# параметры сетки
-GRID_WIDTH = 10
-X_AR = 400
-D_AR = - GRID_WIDTH * 0.007
-
 # области парковок
 CENTRAL_PARKING = [(280, 90), (955, 90), (955, 150), (280, 150), (280, 90)]
 BOTTOM_PARKING = [(370, 225), (920, 185), (970, 195), (965, 220), (370, 255), (370, 225)]
@@ -20,11 +11,10 @@ LEFT_PARKING = [(0, 140), (300, 150), (300, 200), (0, 190), (0, 140)]
 RIGHT_PARKING = [(950, 20), (1020, 80), (1000, 130), (950, 80), (950, 20)]
 
 
-
 def create_map(bbox_tensor_lst: list):
 
     # получаю матрицу проективного преобразования
-    transform_mat, status = homography_matrix(MAP_WIDTH, MAP_HEIGHT)
+    transform_mat, status = homography_matrix()
 
     # делаю проекцию всех bbox
     bbox_mapped_lst = []
@@ -35,37 +25,35 @@ def create_map(bbox_tensor_lst: list):
         bbox_mapped_lst.append(car_center_target)
 
     # сетка для спроецированного изображения (для каждого bbox будет определяться - к какой линии он ближе)
-    grids_source_lst = make_grid(GRID_WIDTH, MAP_WIDTH, X_AR, D_AR)
+    grids_source_lst = make_grid()
 
     # создаю шаблон карты-схемы
-    parking_map, grids_target_lst = make_map(MAP_WIDTH, MAP_HEIGHT, len(grids_source_lst))
+    parking_map, grids_target_lst = make_map(len(grids_source_lst))
 
     # центральная парковка
-    contour = make_contour(MAP_WIDTH, MAP_HEIGHT, CENTRAL_PARKING)
+    contour = make_contour(CENTRAL_PARKING)
     parking_map = draw_parking(bbox_mapped_lst, parking_map, contour, grids_source_lst, grids_target_lst,
                           y_level=120, pos=0)
 
     # нижняя парковка
-    contour = make_contour(MAP_WIDTH, MAP_HEIGHT, BOTTOM_PARKING)
+    contour = make_contour(BOTTOM_PARKING)
     parking_map = draw_parking(bbox_mapped_lst, parking_map, contour, grids_source_lst, grids_target_lst,
                           y_level=230, pos=90)
 
     # верхняя парковка
-    contour = make_contour(MAP_WIDTH, MAP_HEIGHT, TOP_PARKING)
+    contour = make_contour(TOP_PARKING)
     parking_map = draw_parking(bbox_mapped_lst, parking_map, contour, grids_source_lst, grids_target_lst,
                           y_level=30, pos=0)
 
     # левая парковка
-    contour = make_contour(MAP_WIDTH, MAP_HEIGHT, LEFT_PARKING)
+    contour = make_contour(LEFT_PARKING)
     parking_map = draw_parking(bbox_mapped_lst, parking_map, contour, grids_source_lst, grids_target_lst,
                           y_level=170, pos=125)
 
     # правая парковка
-    contour = make_contour(MAP_WIDTH, MAP_HEIGHT, RIGHT_PARKING)
+    contour = make_contour(RIGHT_PARKING)
     parking_map = draw_parking(bbox_mapped_lst, parking_map, contour, grids_source_lst, grids_target_lst,
                           y_level=None, pos=0)
-
-    print('parking shape', parking_map.shape)
 
     return parking_map
 
