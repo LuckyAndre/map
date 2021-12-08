@@ -14,18 +14,21 @@ MAP_HEIGHT = 256
 
 # параметры сетки
 GRID_WIDTH = 10
-X_AR = 540
+X_AR = 500
 D_AR = - GRID_WIDTH * 0.008
 
 # контур дорожного полотна
 ROAD_POINTS = [
-    (0, 145), (360, 145), (360, 100), (580, 100), (610, 10), (920, 10), (1000, 80),  # сверху
-    (1000, 256), (930, 256),  # справа
-    (930, 245), (0, 245), (0, 145)  # снизу
+    (0, 145), (340, 145), (340, 100), (555, 100), (585, 10), (920, 10),   # сверху
+    (1015, 80), (1015, 256),  # справа
+    (940, 256), (940, 245), (0, 245), (0, 145)  # снизу
 ]
 
 # ширина машины
 CAR_WIDTH = 16
+
+# ручная корректировка
+CORRECTION_AREA = [[985, 120], [985, 200], [1020, 200], [1020, 120], [985, 120]]
 
 
 # матрица проективного преобразования (позволяет сменить ракурс)
@@ -54,7 +57,7 @@ def homography_matrix(map_width: int = MAP_WIDTH, map_height: int = MAP_HEIGHT):
 
 def make_grid(
         grid_width: int = GRID_WIDTH,
-        map_width: int = MAP_WIDTH,
+        map_width: int = 1010, # MAP_WIDTH
         x_ar: int = X_AR,
         d_ar: float = D_AR,
 ):
@@ -153,6 +156,7 @@ def draw_car(
     :return: карта-схема
     """
     color = (150, 150, 150)
+    color = (0, 0, 255)
     car_length = 2.3 * car_width
 
     # TODO возможно без этой встравки?
@@ -164,8 +168,6 @@ def draw_car(
     x = grids_t_lst[idx]  # смещаю на ближаюшую сетку
     if y_level is not None:
         y = y_level
-
-
 
     # рисую прямоугольник сверху вниз
     if pos == 0:
@@ -262,15 +264,14 @@ def draw_parking(
                 grids_t_lst=grids_target_lst
             )
 
-    # ограничение на случай, если машины супер плотно запарковали (иногда бывает)
+    # ограничение на случай, если машины запаркованы плотнее стандартного состояния
     if capacity < 0:
         capacity = 0
 
     return parking_map, capacity
 
 
-def correction_right_bottom_parking(x: int, y: int):
+def correction_right_bottom_parking(x: int, y: int, area: list = CORRECTION_AREA):
     # корректировка правой нижней области, которая возникает из-за изгиба изображения
-    CORRECTION_AREA = np.array([[980, 120], [980, 200], [1020, 200], [1020, 120], [980, 120]])
-    contour = make_contour(CORRECTION_AREA)
+    contour = make_contour(area)
     return cv2.pointPolygonTest(contour[0], (x, y), False) == 1
